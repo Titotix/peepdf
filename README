@@ -30,6 +30,10 @@ http://twitter.com/peepdf
 
 No installation is needed apart of the commented dependencies, just execute it!
 
+* Dependencies installation:
+
+boost:
+http://www.boost.org/users/history/version_1_61_0.html
 
 
 ** Execution **
