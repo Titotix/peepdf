@@ -123,14 +123,14 @@ class PDFOutput(object):
 
     def getJSON(self, statsDict):
         try:
-            return self.getPeepJSON(statsDict) 
+            return self.getPeepDict(statsDict)
         except:
             errorMessage = '*** Error: Exception while generating the JSON report!!'
             print self.errorColor + errorMessage + self.resetColor + self.newLine
             traceback.print_exc(file=open(self.errorsFile, 'a'))
             raise Exception('PeepException', 'Send me an email ;)')
 
-    def getPeepJSON(self, statsDict):
+    def getPeepDict(self, statsDict):
         # peepdf info
         peepdfDict = {'version': PEEPDF_VERSION,
                       'revision': PEEPDF_REVISION,
@@ -240,7 +240,7 @@ class PDFOutput(object):
                          'basic': basicDict,
                          'advanced': advancedInfo}
                     }
-        return json.dumps(jsonDict, indent=4, sort_keys=True)
+        return jsonDict
 
     def getXML(self, statsDict):
         try:
@@ -549,13 +549,19 @@ class PDFOutput(object):
         Wrapper to get a formatted report info.
             @statsDict: dict with pdf info.
             @format: expected output format.
-                Possible  value are 'text', 'xml' and 'json'
+                Possible  value are 'text', 'xml' and 'json' and 'dict'
         """
         if format == "text":
             return self.getPeepReport(statsDict)
         elif format == "json":
-            return self.getPeepJSON(statsDict)
+            return json.dumps(
+                self.getPeepDict(statsDict),
+                indent=4,
+                sort_keys=True
+            )
         elif format == "xml":
             return self.getPeepXML(statsDict)
+        elif format == "dict":
+            return self.getPeepDict(statsDict)
         else:
             raise Exception("Format {} not handled".format(format))
