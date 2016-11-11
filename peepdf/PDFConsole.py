@@ -2365,7 +2365,7 @@ class PDFConsole(PDFOutput, cmd.Cmd):
             else:
                 self.log_output('js_vars ' + argv, '*** Error: The variable does not exist in the Javascript context.')
         else:
-            fixedVars = ['evalOverride', 'hasOwnProperty', 'isPrototypeOf', 'toLocaleString', 'toString', 'unwatch',
+            fixedVars = ['evalCode', 'evalOverride', 'hasOwnProperty', 'isPrototypeOf', 'toLocaleString', 'toString', 'unwatch',
                          'valueOf', 'watch']
             varArray = context.locals.keys()
             for fixedVar in fixedVars:
