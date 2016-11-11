@@ -32,6 +32,7 @@ import sys
 import traceback
 
 from peepdf.PDFUtils import unescapeHTMLEntities, escapeString
+from peepdf.constants import ERROR_FILE, JS_ERROR_FILE
 
 try:
     import PyV8
@@ -51,7 +52,7 @@ except:
         pass
 
 
-errorsFile = os.path.expanduser("~/.peepdf-error.txt")
+errorsFile = ERROR_FILE
 newLine = os.linesep
 reJSscript = '<script[^>]*?contentType\s*?=\s*?[\'"]application/x-javascript[\'"][^>]*?>(.*?)</script>'
 preDefinedCode = 'var app = this;'
@@ -103,7 +104,7 @@ def analyseJS(code, context=None, manualAnalysis=False):
                         break
                 except:
                     error = str(sys.exc_info()[1])
-                    f = open(os.path.expanduser("~/.peepdf-jserror.log"), "ab")
+                    f = open(JS_ERROR_FILE, "ab")
                     f.write(error + newLine)
                     errors.append(error)
                     break

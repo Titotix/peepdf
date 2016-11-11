@@ -24,3 +24,4 @@ PEEPDF_ROOT = os.path.dirname(
     os.path.realpath(os.path.join(sys.argv[0], ".."))
 )
 ERROR_FILE = os.path.expanduser("~/.peepdf-errors.log")
+JS_ERROR_FILE = os.path.expanduser("~/.peepdf-jserrors.log")
