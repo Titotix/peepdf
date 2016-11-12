@@ -7267,8 +7267,8 @@ class PDFParser:
             pdfIndirectObject.setObject(object)
             ret = self.readSymbol(rawIndirectObject, 'endobj', False)
             pdfIndirectObject.setSize(self.charCounter)
-        except:
-            errorMessage = 'Unspecified parsing error'
+        except Exception as e:
+            errorMessage = 'Parsing error:\n' + e.message
             pdfFile.addError(errorMessage)
             return (-1, errorMessage)
         pdfFile.setMaxObjectId(id)
