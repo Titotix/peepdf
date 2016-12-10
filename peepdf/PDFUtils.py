@@ -31,6 +31,7 @@ import htmlentitydefs
 import json
 import urllib
 import urllib2
+from string import find
 
 def clearScreen():
     '''
@@ -418,6 +419,22 @@ def unescapeString(string):
             unescapedValue += string[i]
         i += 1
     return unescapedValue
+
+def stripHTMLComments(code):
+    """
+        Return provided str without HTML comments
+        @code: str to strip out HTML comments
+        @return: str
+    """
+    startCom = find(code, "<!--")
+    while startCom != -1:
+        endCom = find(code, "-->", startCom)
+        if endCom == -1:
+            raise Exception("Missing closing comment symbol")
+        code = code[0:startCom -1] + code[endCom + 3:]
+        startCom = find(code, "<!--")
+    return code
+
 
 def vtcheck(md5, vtKey):
     '''
