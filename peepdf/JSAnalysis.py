@@ -30,22 +30,31 @@ import os
 import re
 import sys
 import traceback
+import pdb
 
-from peepdf.PDFUtils import unescapeHTMLEntities, escapeString
+from peepdf.PDFUtils import unescapeHTMLEntities, escapeString, stripHTMLComments
 from peepdf.constants import ERROR_FILE, JS_ERROR_FILE
 
 try:
     import PyV8
 
     class Global(PyV8.JSClass):
+        class App():
+            def toString(arg):
+                return ""
+            def alert(arg):
+                return ""
         evalCode = ''
+        app = dict()
+        app["viewerVersion"] = App()
 
         def evalOverride(self, expression):
             self.evalCode += '\n\n// New evaluated code\n' + expression
             return
 
+
     JS_MODULE = True
-except:
+except ImportError:
     JS_MODULE = False
 
     class Global(object):
@@ -55,7 +64,6 @@ except:
 errorsFile = ERROR_FILE
 newLine = os.linesep
 reJSscript = '<script[^>]*?contentType\s*?=\s*?[\'"]application/x-javascript[\'"][^>]*?>(.*?)</script>'
-preDefinedCode = 'var app = this;'
 
 
 def analyseJS(code, context=None, manualAnalysis=False):
@@ -77,6 +85,7 @@ def analyseJS(code, context=None, manualAnalysis=False):
 
     try:
         code = unescapeHTMLEntities(code)
+        code = stripHTMLComments(code)
         scriptElements = re.findall(reJSscript, code, re.DOTALL | re.IGNORECASE)
         if scriptElements:
             code = ''
@@ -91,13 +100,15 @@ def analyseJS(code, context=None, manualAnalysis=False):
             context.enter()
             # Hooking the eval function
             context.eval('eval=evalOverride')
-            # context.eval(preDefinedCode)
+            pdb.set_trace()
             while True:
                 try:
                     context.eval(code)
                     evalCode = context.eval('evalCode')
                     evalCode = jsbeautifier.beautify(evalCode)
                     if evalCode != '' and evalCode != code:
+                        print "evalCode != "" and evalCode != code"
+                        #print "code : {} evalCode:{}".format(code, evalCode)
                         code = evalCode
                         jsCode.append(code)
                     else:
