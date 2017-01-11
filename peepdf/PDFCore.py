@@ -25,11 +25,13 @@
     This module contains classes and methods to analyse and modify PDF files
 '''
 
+import pdb
 import hashlib
 import os
 import random
 import re
 import sys
+import logging
 
 import peepdf.aes as AES
 from peepdf.PDFUtils import (
@@ -44,6 +46,9 @@ from peepdf.JSAnalysis import (
     isJavascript, analyseJS
 )
 from peepdf.PDFFilters import decodeStream, encodeStream
+from peepdf.log import PdfParserHandler
+
+log = logging.getLogger(__name__)
 
 MAL_ALL = 1
 MAL_HEAD = 2
@@ -3931,7 +3936,7 @@ class PDFBody:
         errorMessage = ''
         if pdfIndirectObject is None:
             errorMessage = 'Indirect Object is None'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         id = pdfIndirectObject.getId()
         if id in self.objects:
@@ -3939,7 +3944,7 @@ class PDFBody:
         pdfObject = pdfIndirectObject.getObject()
         if pdfObject is None:
             errorMessage = 'Object is None'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         objectType = pdfObject.getType()
         self.numObjects -= 1
@@ -3963,7 +3968,7 @@ class PDFBody:
                     if typeObject is None:
                         errorMessage = '/Type element is None'
                         if isForceMode:
-                            pdfFile.addError(errorMessage)
+                            log.error(errorMessage)
                         else:
                             return (-1, errorMessage)
                     else:
@@ -4013,17 +4018,18 @@ class PDFBody:
                         ret = object.encodeChars()
                         if ret[0] == -1:
                             errorMessage = ret[1]
-                            pdfFile.addError(errorMessage)
+                            log.error(errorMessage)
                         indirectObject.setObject(object)
                         self.deregisterObject(indirectObject)
                         self.registerObject(indirectObject)
                 else:
                     errorMessage = 'Bad object found while encoding strings'
-                    pdfFile.addError(errorMessage)
+                    log.error(errorMessage)
             else:
                 errorMessage = 'Bad indirect object found while encoding strings'
-                pdfFile.addError(errorMessage)
+                log.error(errorMessage)
         if errorMessage != '':
+            # TODO return only the last error string...
             return (-1, errorMessage)
         return (0, '')
 
@@ -4143,13 +4149,13 @@ class PDFBody:
         errorMessage = ''
         if pdfIndirectObject is None:
             errorMessage = 'Indirect Object is None'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         id = pdfIndirectObject.getId()
         pdfObject = pdfIndirectObject.getObject()
         if pdfObject is None:
             errorMessage = 'Object is None'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         objectType = pdfObject.getType()
         self.numObjects += 1
@@ -4175,7 +4181,7 @@ class PDFBody:
                     if typeObject is None:
                         errorMessage = '/Type element is None'
                         if isForceMode:
-                            pdfFile.addError(errorMessage)
+                            log.error(errorMessage)
                         else:
                             return (-1, errorMessage)
                     else:
@@ -4221,7 +4227,7 @@ class PDFBody:
             if modification:
                 errorMessage = 'Object not found'
                 if isForceMode:
-                    pdfFile.addError(errorMessage)
+                    log.error(errorMessage)
                 else:
                     return (-1, errorMessage)
             if id is None:
@@ -4257,7 +4263,7 @@ class PDFBody:
             if object is None:
                 errorMessage = 'Object is None'
                 if isForceMode:
-                    pdfFile.addError(errorMessage)
+                    log.error(errorMessage)
                     continue
                 else:
                     return (-1, errorMessage)
@@ -4271,7 +4277,7 @@ class PDFBody:
                     if refObject is None:
                         errorMessage = 'Referenced object is None'
                         if isForceMode:
-                            pdfFile.addError(errorMessage)
+                            log.error(errorMessage)
                             continue
                         else:
                             return (-1, errorMessage)
@@ -4280,7 +4286,7 @@ class PDFBody:
                 else:
                     errorMessage = 'Referenced object not found'
                     if isForceMode:
-                        pdfFile.addError(errorMessage)
+                        log.error(errorMessage)
                         continue
                     else:
                         return (-1, errorMessage)
@@ -4301,7 +4307,7 @@ class PDFBody:
                     if typeObject is None:
                         errorMessage = 'Referenced element is None'
                         if isForceMode:
-                            pdfFile.addError(errorMessage)
+                            log.error(errorMessage)
                             continue
                         else:
                             return (-1, errorMessage)
@@ -4325,7 +4331,7 @@ class PDFBody:
                 if object is None:
                     errorMessage = 'Object is None'
                     if isForceMode:
-                        pdfFile.addError(errorMessage)
+                        log.error(errorMessage)
                         continue
                     else:
                         return (-1, errorMessage)
@@ -4341,7 +4347,7 @@ class PDFBody:
     def updateStats(self, id, pdfObject, delete=False):
         if pdfObject is None:
             errorMessage = 'Object is None'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         value = pdfObject.getValue()
         for event in monitorizedEvents:
@@ -6915,6 +6921,10 @@ class PDFParser:
         headerOffset = 0
         garbageHeader = ''
         pdfFile = PDFFile()
+        pdfHandler = PdfParserHandler(pdfFile)
+        pdfHandler.setLevel(logging.DEBUG)
+        log.addHandler(pdfHandler)
+
         pdfFile.setPath(fileName)
         pdfFile.setFileName(os.path.basename(fileName))
         isForceMode = forceMode
@@ -6922,6 +6932,7 @@ class PDFParser:
 
         # Reading the file header
         file = open(fileName, 'rb')
+        log.info("start parsing")
         for line in file:
             if versionLine == '':
                 pdfHeaderIndex = line.find('%PDF-')
@@ -6953,12 +6964,11 @@ class PDFParser:
         versionLine = versionLine.replace('\n', '')
         matchVersion = re.findall('%(PDF-|!PS-Adobe-\d{1,2}\.\d{1,2}\sPDF-)(\d{1,2}\.\d{1,2})', versionLine)
         if matchVersion == []:
-            if forceMode:
+            log.error("Bad PDF header ({})".format(versionLine))
+            if isForceMode:
                 pdfFile.setVersion(versionLine)
-                pdfFile.addError('Bad PDF header')
-                errorMessage = 'Bad PDF header'
             else:
-                sys.exit('Error: Bad PDF header!! (' + versionLine + ')')
+                sys.exit()
         else:
             pdfFile.setVersion(matchVersion[0][1])
         if garbageHeader != '':
@@ -7000,11 +7010,11 @@ class PDFParser:
         else:
             if self.fileParts == []:
                 errorMessage = '%%EOF not found'
+                log.error(errorMessage)
                 if forceMode:
-                    pdfFile.addError(errorMessage)
                     self.fileParts.append(fileContent)
                 else:
-                    sys.exit(errorMessage)
+                    sys.exit()
         pdfFile.setUpdates(len(self.fileParts) - 1)
 
         # Getting the body, cross reference table and trailer of each part of the file
@@ -7045,11 +7055,9 @@ class PDFParser:
                     bodyContent = bodyContent.strip('\r\n')
                     trailerContent = trailerContent.strip('\r\n')
                 else:
-                    errorMessage = 'PDF sections not found'
-                    if forceMode:
-                        pdfFile.addError(errorMessage)
-                    else:
-                        sys.exit('Error: '+errorMessage+'!!')
+                    log.error("PDF section not found")
+                    if not forceMode:
+                        sys.exit()
 
             # Converting the body content in PDFObjects
             body = PDFBody()
@@ -7082,7 +7090,7 @@ class PDFParser:
                                 pdfIndirectObject.setOffset(bodyOffset + relativeOffset)
                             ret = body.registerObject(pdfIndirectObject)
                             if ret[0] == -1:
-                                pdfFile.addError(ret[1])
+                                log.error(ret[1])
                             type = ret[1]
                             pdfObject = pdfIndirectObject.getObject()
                             if pdfObject is not None:
@@ -7098,27 +7106,27 @@ class PDFParser:
                                     if ret[0] != -1:
                                         xrefStreamSection = ret[1]
                             else:
+                                log.error("Object is None."
+                                          "Happen while parsing indirect object (offset: {})".format(
+                                              pdfIndirectObject.getOffset())
+                                          )
                                 if not forceMode:
-                                    sys.exit('Error: An error has occurred while parsing an indirect object!!')
-                                else:
-                                    pdfFile.addError('Object is None')
+                                    sys.exit()
                         else:
+                            log.error("Indirect object is None")
                             if not forceMode:
-                                sys.exit('Error: Bad indirect object!!')
-                            else:
-                                pdfFile.addError('Indirect object is None')
+                                sys.exit()
                     else:
+                        log.error("Error parsing object: {0} ({1})".format(objectHeader, ret[1]))
                         if not forceMode:
-                            sys.exit('Error: An error has occurred while parsing an indirect object!!')
-                        else:
-                            pdfFile.addError('Error parsing object: '+str(objectHeader)+' ('+str(ret[1])+')')
+                            sys.exit()
             else:
-                pdfFile.addError('No indirect objects found in the body')
+                log.error("No indirect objects found in the body")
             if pdfIndirectObject is not None:
                 body.setNextOffset(pdfIndirectObject.getOffset())
             ret = body.updateObjects()
             if ret[0] == -1:
-                pdfFile.addError(ret[1])
+                log.error(ret[1])
             pdfFile.addBody(body)
             pdfFile.addNumObjects(body.getNumObjects())
             pdfFile.addNumStreams(body.getNumStreams())
@@ -7172,7 +7180,7 @@ class PDFParser:
                         encryptDict = encryptObject
                     else:
                         if i == pdfFile.updates:
-                            pdfFile.addError('/Encrypt dictionary not found')
+                            log.error("/Encrypt dictionary not found")
                 if objectType == 'dictionary':
                     pdfFile.setEncryptDict([encryptDictId, encryptDict.getElements()])
 
@@ -7191,7 +7199,7 @@ class PDFParser:
         if pdfFile.isEncrypted() and pdfFile.getEncryptDict() is not None:
             ret = pdfFile.decrypt()
             if ret[0] == -1:
-                pdfFile.addError(ret[1])
+                log.error(ret[1])
         return (0, pdfFile)
 
     def parsePDFSections(self, content, forceMode=False, looseMode=False):
@@ -7223,7 +7231,7 @@ class PDFParser:
             else:
                 bodyContent = restContent
                 if forceMode:
-                    pdfFile.addError('Xref section not found')
+                    log.error("Xref section not found")
             return [bodyContent, xrefContent, trailerContent]
 
         indexTrailer = content.find('startxref')
@@ -7269,7 +7277,7 @@ class PDFParser:
             pdfIndirectObject.setSize(self.charCounter)
         except Exception as e:
             errorMessage = 'Parsing error:\n' + e.message
-            pdfFile.addError(errorMessage)
+            log.error("Parsing error: {}".format(e))
             return (-1, errorMessage)
         pdfFile.setMaxObjectId(id)
         return (0, pdfIndirectObject)
@@ -7286,28 +7294,23 @@ class PDFParser:
         elements = []
         ret = self.readObject(rawContent)
         if ret[0] == -1:
+            pdfObject = None
+            # TODO create Exception specific
             if ret[1] != 'Empty content reading object':
-                if isForceMode:
-                    pdfFile.addError(ret[1])
-                    pdfObject = None
-                else:
+                log.error(ret[1])
+                if not isForceMode:
                     return ret
-            else:
-                pdfObject = None
         else:
             pdfObject = ret[1]
         while pdfObject is not None:
             elements.append(pdfObject)
             ret = self.readObject(rawContent[self.charCounter:])
             if ret[0] == -1:
+                pdfObject = None
                 if ret[1] != 'Empty content reading object':
-                    if isForceMode:
-                        pdfFile.addError(ret[1])
-                        pdfObject = None
-                    else:
+                    log.error(ret[1])
+                    if not isForceMode:
                         return ret
-                else:
-                    pdfObject = None
             else:
                 pdfObject = ret[1]
         try:
@@ -7332,14 +7335,11 @@ class PDFParser:
         rawNames = {}
         ret = self.readObject(rawContent[self.charCounter:], 'name')
         if ret[0] == -1:
+            name = None
             if ret[1] != 'Empty content reading object':
-                if isForceMode:
-                    pdfFile.addError(ret[1])
-                    name = None
-                else:
+                log.error(ret[1])
+                if not isForceMode:
                     return ret
-            else:
-                name = None
         else:
             name = ret[1]
         while name is not None:
@@ -7349,7 +7349,7 @@ class PDFParser:
             ret = self.readObject(rawValue)
             if ret[0] == -1:
                 if isForceMode:
-                    pdfFile.addError('Bad object for '+str(key)+' key')
+                    log.error("Bad object for {} key".format(key))
                     ret = self.readUntilSymbol(rawContent, '/')
                     if ret[0] == -1:
                         elements[key] = PDFString(rawValue)
@@ -7363,22 +7363,18 @@ class PDFParser:
                 elements[key] = value
             ret = self.readObject(rawContent[self.charCounter:], 'name')
             if ret[0] == -1:
+                name = None
                 if ret[1] != 'Empty content reading object':
-                    if isForceMode:
-                        pdfFile.addError(ret[1])
-                        name = None
-                    else:
+                    log.error(ret[1])
+                    if not isForceMode:
                         return ret
-                else:
-                    name = None
             else:
                 name = ret[1]
                 if name is not None and name.getType() != 'name':
                     errorMessage = 'Name object not found in dictionary key'
-                    if isForceMode:
-                        pdfFile.addError(errorMessage)
-                        name = None
-                    else:
+                    name = None
+                    log.error(errorMessage)
+                    if not isForceMode:
                         return (-1, errorMessage)
         try:
             pdfDictionary = PDFDictionary(rawContent, elements, rawNames)
@@ -7403,14 +7399,11 @@ class PDFParser:
         rawNames = {}
         ret = self.readObject(dict[self.charCounter:], 'name')
         if ret[0] == -1:
+            name = None
             if ret[1] != 'Empty content reading object':
-                if isForceMode:
-                    pdfFile.addError(ret[1])
-                    name = None
-                else:
+                log.error(ret[1])
+                if not isForceMode:
                     return ret
-            else:
-                name = None
         else:
             name = ret[1]
         while name is not None:
@@ -7418,27 +7411,21 @@ class PDFParser:
             rawNames[key] = name
             ret = self.readObject(dict[self.charCounter:])
             if ret[0] == -1:
+                value = None
                 if ret[1] != 'Empty content reading object':
-                    if isForceMode:
-                        pdfFile.addError(ret[1])
-                        value = None
-                    else:
+                    log.error(ret[1])
+                    if not isForceMode:
                         return ret
-                else:
-                    value = None
             else:
                 value = ret[1]
             elements[key] = value
             ret = self.readObject(dict[self.charCounter:], 'name')
             if ret[0] == -1:
+                name = None
                 if ret[1] != 'Empty content reading object':
-                    if isForceMode:
-                        pdfFile.addError(ret[1])
-                        name = None
-                    else:
+                    log.error(ret[1])
+                    if not isForceMode:
                         return ret
-                else:
-                    name = None
             else:
                 name = ret[1]
         if "/Type" in elements and elements['/Type'].getValue() == '/ObjStm':
@@ -7488,14 +7475,16 @@ class PDFParser:
         if lines == []:
             if isForceMode:
                 pdfCrossRefSubSection = PDFCrossRefSubSection(0, offset=-1)
-                pdfFile.addError('No entries in xref section')
+                log.error("No entries in xref section")
             else:
-                return (-1, 'Error: No entries in xref section!!')
+                return (-1, 'No entries in xref section!!')
         else:
             for line in lines:
                 match = re.findall(beginSubSectionRE, line)
                 if match != []:
                     if pdfCrossRefSubSection is not None:
+                        pdfCrossRefSubSection.addError("THIS IS A TEST")
+                        print("FUCK YEAH")
                         pdfCrossRefSubSection.setSize(subSectionSize)
                         pdfCrossRefSection.addSubsection(pdfCrossRefSubSection)
                         pdfCrossRefSubSection.setEntries(entries)
@@ -7503,8 +7492,8 @@ class PDFParser:
                         entries = []
                     try:
                         pdfCrossRefSubSection = PDFCrossRefSubSection(match[0][0], match[0][1], offset=auxOffset)
-                    except:
-                        return (-1, 'Error creating PDFCrossRefSubSection')
+                    except Exception as e:
+                        return (-1, 'Error creating PDFCrossRefSubSection: {}'.format(e))
                 else:
                     match = re.findall(entryRE, line)
                     if match != []:
@@ -7520,18 +7509,20 @@ class PDFParser:
                                 pdfCrossRefSubSection.addError('Bad format for cross reference entry: '+line)
                             else:
                                 pdfCrossRefSubSection = PDFCrossRefSubSection(0, offset=-1)
-                                pdfFile.addError('Bad xref section')
+                                log.error("Bad xref section")
                         else:
                             return (-1, 'Bad format for cross reference entry')
                 auxOffset += len(line)
                 subSectionSize += len(line)
+            # TODO this else statement sounds stricly useless, even confusing
             else:
                 if not pdfCrossRefSubSection:
+                    errMsg = "Missing xref section header"
                     if isForceMode:
                         pdfCrossRefSubSection = PDFCrossRefSubSection(0, len(entries), offset=auxOffset)
-                        pdfFile.addError('Missing xref section header')
+                        log.error(errMsg)
                     else:
-                        return (-1, 'Missing xref section header')
+                        return (-1, errMsg)
         pdfCrossRefSubSection.setSize(subSectionSize)
         pdfCrossRefSection.addSubsection(pdfCrossRefSubSection)
         pdfCrossRefSubSection.setEntries(entries)
@@ -7704,11 +7695,10 @@ class PDFParser:
         else:
             ret = self.readUntilEndOfLine(rawContent)
             if ret[0] == -1:
-                if isForceMode:
-                    lastXrefSection = -1
-                    pdfFile.addError('EOL not found while looking for the last cross reference section')
-                else:
+                log.error("EOL not found while looking for the last cross reference section")
+                if not isForceMode:
                     return (-1, 'EOL not found while looking for the last cross reference section')
+                lastXrefSection = -1
             else:
                 lastXrefSection = ret[1]
             try:
@@ -7864,11 +7854,12 @@ class PDFParser:
             if index != -1:
                 delimiters = [self.delimiters[index]]
             else:
+                errMSg = "Unknown object type"
                 if isForceMode:
-                    pdfFile.addError('Unknown object type while parsing object')
-                    return (-1, 'Unknown object type')
+                    log.error(errMsg)
+                    return (-1, errMsg)
                 else:
-                    sys.exit('Error: Unknown object type!!')
+                    sys.exit()
         else:
             delimiters = self.delimiters
         for delim in delimiters:
@@ -8011,7 +8002,7 @@ class PDFParser:
         oldCharCounter = self.charCounter
         if self.charCounter > len(string)-1:
             errorMessage = 'EOF while looking for symbol "'+symbol+'"'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         while string[self.charCounter] == '%':
             ret = self.readUntilEndOfLine(string)
@@ -8022,7 +8013,7 @@ class PDFParser:
         symbolToRead = string[self.charCounter:self.charCounter+len(symbol)]
         if symbolToRead != symbol:
             errorMessage = 'Symbol "'+symbol+'" not found while parsing'
-            # pdfFile.addError(errorMessage)
+            log.debug(errorMessage)
             return (-1, errorMessage)
         self.charCounter += len(symbol)
         if deleteSpaces:
@@ -8044,7 +8035,7 @@ class PDFParser:
         numClosingDelims = newContent.count(delim[1])
         if numClosingDelims == 0:
             errorMessage = 'No closing delimiter found'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         elif numClosingDelims == 1:
             index = newContent.rfind(delim[1])
@@ -8097,7 +8088,7 @@ class PDFParser:
                     prevChar = char
             else:
                 errorMessage = 'No closing delimiter found'
-                pdfFile.addError(errorMessage)
+                log.error(errorMessage)
                 return (-1, errorMessage)
 
     def readUntilEndOfLine(self, content):
@@ -8118,7 +8109,7 @@ class PDFParser:
             self.charCounter += 1
         else:
             errorMessage = 'EOL not found'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
 
     def readUntilLastSymbol(self, string, symbol):
@@ -8135,7 +8126,7 @@ class PDFParser:
         index = newString.rfind(symbol)
         if index == -1:
             errorMessage = 'Symbol "'+symbol+'" not found'
-            pdfFile.addError(errorMessage)
+            log.error(errorMessage)
             return (-1, errorMessage)
         self.charCounter += index
         return (0, newString[:index])

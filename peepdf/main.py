@@ -32,6 +32,8 @@ import os
 import optparse
 import traceback
 import StringIO
+import logging
+import pdb
 
 import peepdf.PDFOutput as PDFOutput
 import peepdf.PDFUtils as PDFUtils
@@ -65,12 +67,25 @@ def main():
     argsParser.add_option('-m', '--manual-analysis', action='store_true', dest='isManualAnalysis', default=False, help='Avoids automatic Javascript analysis. Useful with eternal loops like heap spraying.')
     argsParser.add_option('-g', '--grinch-mode', action='store_true', dest='avoidColors', default=False, help='Avoids colorized output in the interactive console.')
     argsParser.add_option('-v', '--version', action='store_true', dest='version', default=False, help='Shows program\'s version number.')
+    argsParser.add_option('-V', '--verbose', action='store_true', default=False, help='Set verbosity. Debug log.')
     argsParser.add_option('-x', '--xml', action='store_true', dest='xmlOutput', default=False, help='Shows the document information in XML format.')
     argsParser.add_option('-j', '--json', action='store_true', dest='jsonOutput', default=False, help='Shows the document information in JSON format.')
     argsParser.add_option('-C', '--command', action='append', type='string', dest='commands', help='Specifies a command from the interactive console to be executed.')
     (options, args) = argsParser.parse_args()
     
     try:
+        log = logging.getLogger()
+        formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s : %(message)s')
+        sh = logging.StreamHandler()
+        sh.setLevel(logging.DEBUG)
+        sh.setFormatter(formatter)
+        if options.verbose:
+            log.setLevel(logging.DEBUG)
+        else:
+            log.setLevel(logging.INFO)
+        pdfParser = PDFParser()
+        log.addHandler(sh)
+
         if options.scriptFile is not None and options.commands:
             sys.stdout.write("scriptFile and commands options can't be used at the same time.\n")
             sys.exit(argsParser.print_help())
@@ -90,7 +105,6 @@ def main():
         statsDict = None
 
         if pdfName is not None:
-            pdfParser = PDFParser()
             ret, pdf = pdfParser.parse(pdfName, options.isForceMode, options.isLooseMode, options.isManualAnalysis)
             if options.checkOnVT:
                 # Checks the MD5 on VirusTotal
