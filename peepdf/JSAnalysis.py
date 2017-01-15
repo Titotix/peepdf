@@ -30,6 +30,7 @@ import os
 import re
 import sys
 import traceback
+import logging
 
 from peepdf.PDFUtils import unescapeHTMLEntities, escapeString
 from peepdf.constants import ERROR_FILE, JS_ERROR_FILE
@@ -51,7 +52,7 @@ except:
     class Global(object):
         pass
 
-
+log = logging.getLogger(__name__)
 errorsFile = ERROR_FILE
 newLine = os.linesep
 reJSscript = '<script[^>]*?contentType\s*?=\s*?[\'"]application/x-javascript[\'"][^>]*?>(.*?)</script>'
@@ -102,8 +103,9 @@ def analyseJS(code, context=None, manualAnalysis=False):
                         jsCode.append(code)
                     else:
                         break
-                except:
+                except Exception as e:
                     error = str(sys.exc_info()[1])
+                    log.error(error)
                     f = open(JS_ERROR_FILE, "ab")
                     f.write(error + newLine)
                     errors.append(error)
@@ -137,7 +139,8 @@ def analyseJS(code, context=None, manualAnalysis=False):
                                 for url in urls:
                                     if url not in urlsFound:
                                         urlsFound.append(url)
-    except:
+    except Exception as e:
+        log.error("Unexpected error : {}".format(e))
         traceback.print_exc(file=open(errorsFile, 'a'))
         errors.append('Unexpected error in the JSAnalysis module!!')
     finally:
