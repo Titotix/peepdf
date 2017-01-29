@@ -6889,6 +6889,8 @@ class PDFFile:
 
 
 class PDFParser:
+
+
     def __init__(self):
         self.commentChar = '%'
         self.comments = []
@@ -7276,8 +7278,8 @@ class PDFParser:
             ret = self.readSymbol(rawIndirectObject, 'endobj', False)
             pdfIndirectObject.setSize(self.charCounter)
         except Exception as e:
-            errorMessage = 'Parsing error:\n' + e.message
-            log.error("Parsing error: {}".format(e))
+            errorMessage = 'Parsing error: {}'.format(e)
+            log.error("Parsing error: {}".format(traceback.format_exc()))
             return (-1, errorMessage)
         pdfFile.setMaxObjectId(id)
         return (0, pdfIndirectObject)
@@ -7348,8 +7350,8 @@ class PDFParser:
             rawValue = rawContent[self.charCounter:]
             ret = self.readObject(rawValue)
             if ret[0] == -1:
+                log.error("Bad object for {} key [[{}]]".format(key, ret[1]))
                 if isForceMode:
-                    log.error("Bad object for {} key".format(key))
                     ret = self.readUntilSymbol(rawContent, '/')
                     if ret[0] == -1:
                         elements[key] = PDFString(rawValue)
@@ -7437,13 +7439,13 @@ class PDFParser:
                     errorMessage += ': '+e.message
                 return (-1, errorMessage)
         else:
-            try:
-                pdfStream = PDFStream(dict, stream, elements, rawNames)
-            except Exception as e:
-                errorMessage = 'Error creating PDFStream'
-                if e.message != '':
-                    errorMessage += ': '+e.message
-                return (-1, errorMessage)
+            #try:
+            pdfStream = PDFStream(dict, stream, elements, rawNames)
+            #except Exception as e:
+            #    errorMessage = 'Error creating PDFStream'
+            #    if e.message != '':
+            #        errorMessage += ': '+e.message
+            #    return (-1, errorMessage)
         self.charCounter = realCounter
         return (0, pdfStream)
 
