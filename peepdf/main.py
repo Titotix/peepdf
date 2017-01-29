@@ -73,12 +73,14 @@ def main():
     argsParser.add_option('-C', '--command', action='append', type='string', dest='commands', help='Specifies a command from the interactive console to be executed.')
     (options, args) = argsParser.parse_args()
     
+    log = logging.getLogger()
+    # TODO shorter logger header (date ! no millisec and 2 first year number)
+    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s : %(message)s')
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.DEBUG)
+    sh.setFormatter(formatter)
+
     try:
-        log = logging.getLogger()
-        formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s : %(message)s')
-        sh = logging.StreamHandler()
-        sh.setLevel(logging.DEBUG)
-        sh.setFormatter(formatter)
         if options.verbose:
             log.setLevel(logging.DEBUG)
         else:
@@ -144,14 +146,14 @@ def main():
         if excName is None or excName != 'PeepException':
             errorMessage = '*** Error: Exception not handled!!'
             traceback.print_exc(file=open(ERROR_FILE, 'a'))
-        sys.stderr.write(errorMessage)
+        log.error("Unhandled error: {}".format(traceback.format_exc()))
     finally:
         if os.path.exists(ERROR_FILE):
             message = newLine + 'Please, don\'t forget to report errors if found:' + newLine * 2
             message += '\t- Sending the file "%s" to the author (mailto:%s)%s' % (
                 ERROR_FILE, AUTHOR_EMAIL, newLine)
             message += '\t- And/Or creating an issue on the project webpage (https://github.com/jesparza/peepdf/issues)' + newLine
-            sys.stderr.write(message)
+            log.warn(message)
 
 
 if __name__ == "__main__":
