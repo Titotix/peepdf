@@ -39,10 +39,11 @@ from peepdf.PDFUtils import (
 )
 from peepdf.PDFCrypto import xor
 from peepdf.JSAnalysis import isJavascript, analyseJS, Global, unescape
-from peepdf.PDFCore import (
-    PDFFile, PDFHexString, PDFDictionary, PDFNum, PDFName, PDFStream,
-    PDFReference, PDFString, PDFArray, PDFBool, PDFNull, vulnsDict, PDFParser
+from peepdf.PDFObjects import (
+    PDFHexString, PDFDictionary, PDFNum, PDFName, PDFStream,
+    PDFReference, PDFString, PDFArray, PDFBool, PDFNull
 )
+from peepdf.PDFCore import PDFParser, PDFFile, vulnsDict
 
 from peepdf.PDFOutput import PDFOutput
 
