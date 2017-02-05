@@ -2757,7 +2757,7 @@ class PDFConsole(PDFOutput, cmd.Cmd):
             message = '*** Error: Opening document failed!!'
             self.pdfFile = None
         self.log_output('open ' + argv, message)
-        print self.dependenciesWarning()
+        print self.getDependenciesWarning()
         if self.pdfFile is not None:
             self.do_info('')
 
