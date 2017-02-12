@@ -566,7 +566,6 @@ class PDFString(PDFObject):
             return (-1, errorMessage)
         return (0, '')
 
-### TODO refactoring : implement decrypt and encrypt in PDFObject for RC4 and AES
     def decrypt(self, password=None, algorithm='RC4'):
         '''
             Decrypt the content of the object if possible
@@ -668,7 +667,7 @@ class PDFHexString(PDFObject):
                     self.value = tmpValue.decode('hex')
                 else:
                     # New decoded value
-                    self.rawValue = self.value.encode('hex')
+                    self.setRawValue(self.value)
                 self.encryptedValue = self.value
             except:
                 errorMessage = 'Error in hexadecimal conversion'
@@ -683,7 +682,6 @@ class PDFHexString(PDFObject):
                 for jsError in jsErrors:
                     errorMessage = 'Error analysing Javascript: '+jsError
                     self.addError(errorMessage)
-        # Same as for PDFStraing.update()
         if self.encrypted and not decrypt:
             ret = self.decrypt()
             if ret[0] == -1:
@@ -697,7 +695,7 @@ class PDFHexString(PDFObject):
         self.encryptionKey = password
         try:
             self.encryptedValue = RC4(self.value, self.encryptionKey)
-            self.rawValue = self.encryptedValue.encode('hex')
+            self.setRawValue(self.encryptedValue)
             self.encrypted = True
         except Exception as e:
             errorMessage = 'Error encrypting with RC4'
@@ -713,7 +711,6 @@ class PDFHexString(PDFObject):
             @return: A tuple (status,statusContent), where statusContent is empty in case status = 0 or an error message in case status = -1
         '''
         self.encrypted = True
-        # TODO problem if password is not provided
         if password:
             self.encryptionKey = password
         try:
@@ -748,6 +745,9 @@ class PDFHexString(PDFObject):
 
     def getRawValue(self):
         return '<'+self.rawValue+'>'
+
+    def setRawValue(self, rawValue):
+        self.rawValue = rawValue.encode("hex")
 
     def getUnescapedBytes(self):
         '''
@@ -1713,7 +1713,6 @@ class PDFStream(PDFDictionary):
                         else:
                             if self.isEncodedStream:
                                 if decrypt:
-                                    # TODO create a proper method/func to encrypt/decrypt data drom whatever algo
                                     try:
                                         if algorithm == 'RC4':
                                             self.encodedStream = RC4(self.encodedStream, self.encryptionKey)
@@ -1831,13 +1830,9 @@ class PDFStream(PDFDictionary):
                     self.modifiedStream = False
                     self.newFilters = False
                     self.deletedFilters = False
-                    # Weird TODO errors managemt: self.errors probably changed since the beginning of update method( initialize to []). So we gonna add to self.errors it self again without any check (addError method)... ??
-                    errors = self.errors
-                    try:
-                        self.setElement('/Length', PDFNum(str(self.size)))
-                        self.errors += errors
-                    except:
-                        errorMessage = 'Error creating PDFNum'
+                    ret = self.setElement('/Length', PDFNum(str(self.size)))
+                    if ret[0] != 0:
+                        errorMessage = 'Error creating PDFNum \'/Length\''
                         self.addError(errorMessage)
                         log.error(errorMessage)
                 else:
@@ -1846,8 +1841,6 @@ class PDFStream(PDFDictionary):
                     self.newFilters = False
                     self.deletedFilters = False
         if self.errors != []:
-            ## TODO Only add the last error in errors array ???
-            self.addError(self.errors[-1])
             return (-1, self.errors[-1])
         else:
             return (0, '')
