@@ -39,14 +39,7 @@ try:
     import PyV8
 
     class Global(PyV8.JSClass):
-        class App():
-            def toString(arg):
-                return ""
-            def alert(arg):
-                return ""
         evalCode = ''
-        app = dict()
-        app["viewerVersion"] = App()
 
         def evalOverride(self, expression):
             self.evalCode += '\n\n// New evaluated code\n' + expression
