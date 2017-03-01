@@ -2104,10 +2104,8 @@ class PDFFile:
             if isForceMode:
                 self.addError(ret[1])
             else:
-                if ret[0] == -1:
-                    errorMessage = '/Encrypt dictionary has not been created/modified'
-                    self.addError(errorMessage)
-                    return (-1, errorMessage)
+                return (-1, "Creating or modifing /Encrypt dictionnary failed: "
+                        "{}".format(ret[1]))
         self.setEncryptionKey(encryptionKey)
         self.setEncryptionKeyLength(128)
         encryptDict = PDFDictionary(elements={
