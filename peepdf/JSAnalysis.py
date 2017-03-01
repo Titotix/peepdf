@@ -66,7 +66,7 @@ newLine = os.linesep
 reJSscript = '<script[^>]*?contentType\s*?=\s*?[\'"]application/x-javascript[\'"][^>]*?>(.*?)</script>'
 
 
-def analyseJS(code, context=None, manualAnalysis=False):
+def analyseJS(code, context=None, manualAnalysis=False, stripComments=True):
     '''
         Hooks the eval function and search for obfuscated elements in the Javascript code
 
@@ -85,7 +85,8 @@ def analyseJS(code, context=None, manualAnalysis=False):
 
     try:
         code = unescapeHTMLEntities(code)
-        code = stripHTMLComments(code)
+        if stripComments:
+            code = stripHTMLComments(code)
         scriptElements = re.findall(reJSscript, code, re.DOTALL | re.IGNORECASE)
         if scriptElements:
             code = ''
