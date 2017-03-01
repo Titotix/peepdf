@@ -2056,114 +2056,107 @@ class PDFFile:
         dictOE = ''
         dictUE = ''
         ret = self.getTrailer()
-        if ret is not None:
-            trailer, trailerStream = ret[1]
-            if trailerStream is not None:
-                encryptDict = trailerStream.getDictEntry('/Encrypt')
-                if encryptDict is not None:
-                    encryptDictType = encryptDict.getType()
-                    if encryptDictType == 'reference':
-                        encryptDictId = encryptDict.getId()
-                fileId = self.getMD5()
-                if fileId == '':
-                    fileId = hashlib.md5(str(random.random())).hexdigest()
-                md5Object = PDFString(fileId)
-                fileIdArray = PDFArray(elements=[md5Object, md5Object])
-                trailerStream.setDictEntry('/ID', fileIdArray)
-                self.setTrailer([trailer, trailerStream])
-            else:
-                encryptDict = trailer.getDictEntry('/Encrypt')
-                if encryptDict is not None:
-                    encryptDictType = encryptDict.getType()
-                    if encryptDictType == 'reference':
-                        encryptDictId = encryptDict.getId()
-                fileId = self.getMD5()
-                if fileId == '':
-                    fileId = hashlib.md5(str(random.random())).hexdigest()
-                md5Object = PDFString(fileId)
-                fileIdArray = PDFArray(elements=[md5Object, md5Object])
-                trailer.setDictEntry('/ID', fileIdArray)
-                self.setTrailer([trailer, trailerStream])
+        if not ret:
+            errorMessage = 'Trailer not found'
+            self.addError(errorMessage)
+            return (-1, errorMessage)
 
-            ret = computeOwnerPass(password, password, 128, revision=3)
-            if ret[0] != -1:
-                dictO = ret[1]
+        trailer, trailerStream = ret[1]
+        if trailerStream is not None:
+            trailer = trailerStream
+
+        encryptDict = trailer.getDictEntry('/Encrypt')
+        if encryptDict is not None:
+            encryptDictType = encryptDict.getType()
+            if encryptDictType == 'reference':
+                encryptDictId = encryptDict.getId()
+        fileId = self.getMD5()
+        if fileId == '':
+            fileId = hashlib.md5(str(random.random())).hexdigest()
+        md5Object = PDFString(fileId)
+        fileIdArray = PDFArray(elements=[md5Object, md5Object])
+        trailer.setDictEntry('/ID', fileIdArray)
+        self.setTrailer([trailer, trailerStream])
+
+        ret = computeOwnerPass(password, password, 128, revision=3)
+        if ret[0] != -1:
+            dictO = ret[1]
+        else:
+            if isForceMode:
+                self.addError(ret[1])
             else:
-                if isForceMode:
-                    self.addError(ret[1])
-                else:
-                    return (-1, ret[1])
-            self.setOwnerPass(dictO)
-            ret = computeUserPass(password, dictO, fileId, permissionNum, 128, revision=3)
-            if ret[0] != -1:
-                dictU = ret[1]
+                return (-1, ret[1])
+        self.setOwnerPass(dictO)
+        ret = computeUserPass(password, dictO, fileId, permissionNum, 128, revision=3)
+        if ret[0] != -1:
+            dictU = ret[1]
+        else:
+            if isForceMode:
+                self.addError(ret[1])
             else:
-                if isForceMode:
-                    self.addError(ret[1])
-                else:
-                    return (-1, ret[1])
-            self.setUserPass(dictU)
-            ret = computeEncryptionKey(password, dictO, dictU, dictOE, dictUE, fileId, permissionNum, 128, revision=3, encryptMetadata=encryptMetadata, passwordType='USER')
-            if ret[0] != -1:
-                encryptionKey = ret[1]
+                return (-1, ret[1])
+        self.setUserPass(dictU)
+        ret = computeEncryptionKey(password, dictO, dictU, dictOE, dictUE, fileId, permissionNum, 128, revision=3, encryptMetadata=encryptMetadata, passwordType='USER')
+        if ret[0] != -1:
+            encryptionKey = ret[1]
+        else:
+            encryptionKey = ''
+            if isForceMode:
+                self.addError(ret[1])
             else:
-                encryptionKey = ''
-                if isForceMode:
-                    self.addError(ret[1])
-                else:
-                    return (-1, ret[1])
-            self.setEncryptionKey(encryptionKey)
-            self.setEncryptionKeyLength(128)
-            encryptDict = PDFDictionary(elements={
-                '/V': PDFNum('2'),
-                '/Length': PDFNum('128'),
-                '/Filter': PDFName('Standard'),
-                '/R': PDFNum('3'),
-                '/P': PDFNum(str(permissionNum)),
-                '/O': PDFString(dictO),
-                '/U': PDFString(dictU)
-            })
-            if encryptDictId is not None:
-                ret = self.setObject(encryptDictId, encryptDict)
                 if ret[0] == -1:
                     errorMessage = '/Encrypt dictionary has not been created/modified'
                     self.addError(errorMessage)
                     return (-1, errorMessage)
+        self.setEncryptionKey(encryptionKey)
+        self.setEncryptionKeyLength(128)
+        encryptDict = PDFDictionary(elements={
+            '/V': PDFNum('2'),
+            '/Length': PDFNum('128'),
+            '/Filter': PDFName('Standard'),
+            '/R': PDFNum('3'),
+            '/P': PDFNum(str(permissionNum)),
+            '/O': PDFString(dictO),
+            '/U': PDFString(dictU)
+        })
+        if encryptDictId is not None:
+            ret = self.setObject(encryptDictId, encryptDict)
+            if ret[0] == -1:
+                errorMessage = '/Encrypt dictionary has not been created/modified : ' + ret[1]
+                self.addError(errorMessage)
+                return (-1, errorMessage)
+        else:
+            if trailerStream is not None:
+                trailerStream.setDictEntry('/Encrypt', encryptDict)
             else:
-                if trailerStream is not None:
-                    trailerStream.setDictEntry('/Encrypt', encryptDict)
-                else:
-                    trailer.setDictEntry('/Encrypt', encryptDict)
-                self.setTrailer([trailer, trailerStream])
+                trailer.setDictEntry('/Encrypt', encryptDict)
+            self.setTrailer([trailer, trailerStream])
 
-            numKeyBytes = self.encryptionKeyLength/8
-            for v in range(self.updates+1):
-                indirectObjects = self.body[v].getObjects()
-                for id in indirectObjects:
-                    indirectObject = indirectObjects[id]
-                    if indirectObject is not None:
-                        generationNum = indirectObject.getGenerationNumber()
-                        object = indirectObject.getObject()
-                        if object is not None and not object.isCompressed():
-                            objectType = object.getType()
-                            if objectType in ['string', 'hexstring', 'array', 'dictionary'] or (objectType == 'stream' and (object.getElement('/Type') is None or (object.getElement('/Type').getValue() not in ['/XRef', '/Metadata'] or (object.getElement('/Type').getValue() == '/Metadata' and encryptMetadata)))):
-                                ret = computeObjectKey(id, generationNum, self.encryptionKey, numKeyBytes)
+        numKeyBytes = self.encryptionKeyLength/8
+        for v in range(self.updates+1):
+            indirectObjects = self.body[v].getObjects()
+            for id in indirectObjects:
+                indirectObject = indirectObjects[id]
+                if indirectObject is not None:
+                    generationNum = indirectObject.getGenerationNumber()
+                    object = indirectObject.getObject()
+                    if object is not None and not object.isCompressed():
+                        objectType = object.getType()
+                        if objectType in ['string', 'hexstring', 'array', 'dictionary'] or (objectType == 'stream' and (object.getElement('/Type') is None or (object.getElement('/Type').getValue() not in ['/XRef', '/Metadata'] or (object.getElement('/Type').getValue() == '/Metadata' and encryptMetadata)))):
+                            ret = computeObjectKey(id, generationNum, self.encryptionKey, numKeyBytes)
+                            if ret[0] == -1:
+                                errorMessage = ret[1]
+                                self.addError(ret[1])
+                            else:
+                                key = ret[1]
+                                ret = object.encrypt(key)
                                 if ret[0] == -1:
                                     errorMessage = ret[1]
                                     self.addError(ret[1])
-                                else:
-                                    key = ret[1]
-                                    ret = object.encrypt(key)
-                                    if ret[0] == -1:
-                                        errorMessage = ret[1]
-                                        self.addError(ret[1])
-                                    ret = self.body[v].setObject(id, object)
-                                    if ret[0] == -1:
-                                        errorMessage = ret[1]
-                                        self.addError(ret[1])
-        else:
-            errorMessage = 'Trailer not found'
-            self.addError(errorMessage)
+                                ret = self.body[v].setObject(id, object)
+                                if ret[0] == -1:
+                                    errorMessage = ret[1]
+                                    self.addError(ret[1])
         if errorMessage != '':
             return (-1, errorMessage)
         self.setEncrypted(True)
@@ -3250,13 +3243,12 @@ class PDFFile:
                 ret = self.body[i].setObject(id, object, modification=mod)
                 if ret[0] == -1:
                     errorMessage = ret[1]
+                    return (-1, errorMessage)
                 else:
                     objectType = object.getType()
                     if objectType == 'dictionary' and object.hasElement('/Linearized'):
                         self.setLinearized(True)
                     return ret
-            else:
-                return (-1, errorMessage)
         else:
             if version > self.updates or version < 0:
                 return (-1, 'Bad file version')
