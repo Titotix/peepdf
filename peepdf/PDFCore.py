@@ -3388,8 +3388,9 @@ class PDFParser:
         isManualAnalysis = manualAnalysis
 
         # Reading the file header
+        log.debug("start parsing")
         file = open(fileName, 'rb')
-        log.info("start parsing")
+        log.debug("Search and read file header")
         for line in file:
             if versionLine == '':
                 pdfHeaderIndex = line.find('%PDF-')
@@ -3417,6 +3418,7 @@ class PDFParser:
         file.close()
 
         # Getting the specification version
+        log.debug("Getting specification version")
         versionLine = versionLine.replace('\r', '')
         versionLine = versionLine.replace('\n', '')
         matchVersion = re.findall('%(PDF-|!PS-Adobe-\d{1,2}\.\d{1,2}\sPDF-)(\d{1,2}\.\d{1,2})', versionLine)
@@ -3451,6 +3453,7 @@ class PDFParser:
                 pdfFile.binary = False
 
         # Reading the rest of the file
+        log.debug("Parsing file content")
         fileContent = open(fileName, 'rb').read()
         pdfFile.setSize(len(fileContent))
         pdfFile.setMD5(hashlib.md5(fileContent).hexdigest())
@@ -3472,6 +3475,7 @@ class PDFParser:
                     self.fileParts.append(fileContent)
                 else:
                     sys.exit()
+        log.debug("Getting {} updates in PDF file".format(len(self.fileParts) - 1))
         pdfFile.setUpdates(len(self.fileParts) - 1)
 
         # Getting the body, cross reference table and trailer of each part of the file
@@ -3628,6 +3632,7 @@ class PDFParser:
                         pdfFile.setEncrypted(True)
                     fileId = trailer.getDictEntry('/ID')
             if pdfFile.getEncryptDict() is None and encryptDict is not None:
+                log.debug("PDF is encrypted")
                 objectType = encryptDict.getType()
                 if objectType == 'reference':
                     encryptDictId = encryptDict.getId()
@@ -3657,6 +3662,8 @@ class PDFParser:
             ret = pdfFile.decrypt()
             if ret[0] == -1:
                 log.error(ret[1])
+            else:
+                log.debug("PDF file decryption success")
         return (0, pdfFile)
 
     def parsePDFSections(self, content, forceMode=False, looseMode=False):
