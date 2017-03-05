@@ -48,7 +48,7 @@ VT_KEY = 'fc90df3f5ac749a94a94cb8bf87e05a681a2eb001aef34b6a0084b8c22c97a64'
 newLine = os.linesep
 
 versionHeader = 'Version: peepdf ' + PEEPDF_VERSION + ' r' + PEEPDF_REVISION
-PeepdfHeader = versionHeader + newLine * 2 + \
+peepdfHeader = versionHeader + newLine * 2 + \
                PEEPDF_URL + newLine + \
                TWITTER_URL + newLine + \
                AUTHOR_EMAIL + newLine * 2 + \
@@ -93,6 +93,7 @@ def main():
             sys.exit(argsParser.print_help())
         if options.version:
             print peepdfHeader
+            sys.exit()
 
         pdfName = None
         if len(args) > 1 or (len(args) == 0 and not options.isInteractive):
