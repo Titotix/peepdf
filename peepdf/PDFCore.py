@@ -104,9 +104,6 @@ vulnsDict = {'mailto': ('mailto', ['CVE-2007-5020']),
              'app.removeToolButton': ('app.removeToolButton', ['CVE-2013-3346'])}
 
 
-
-
-
 class PDFCrossRefSection:
     def __init__(self):
         self.errors = []
@@ -119,8 +116,7 @@ class PDFCrossRefSection:
     def addEntry(self, objectId, newEntry):
         prevSubsection = 0
         errorMessage = ''
-        for i in range(len(self.subsections)):
-            subsection = self.subsections[i]
+        for i, subsection in enumerate(self.subsections):
             ret = subsection.addEntry(newEntry, objectId)
             if ret[0] != -1:
                 break
@@ -153,8 +149,7 @@ class PDFCrossRefSection:
 
     def delEntry(self, objectId):
         errorMessage = ''
-        for i in range(len(self.subsections)):
-            subsection = self.subsections[i]
+        for i, subestion in enumerate(self.subsections):
             numEntry = subsection.getIndex(objectId)
             if numEntry is not None:
                 if subsection.getNumObjects() == 1:
@@ -206,8 +201,7 @@ class PDFCrossRefSection:
         else:
             stats['Stream'] = None
         stats['Subsections'] = []
-        for i in range(len(self.subsections)):
-            subsection = self.subsections[i]
+        for i, subsection in enumerate(self.subsections):
             subStats = {}
             subStats['Entries'] = str(len(subsection.getEntries()))
             if subsection.isFaulty():
@@ -364,8 +358,8 @@ class PDFCrossRefSubSection:
 
     def getFreeObjectIds(self):
         ids = []
-        for i in range(len(self.entries)):
-            if self.entries[i].getType() == 'f':
+        for i, entry in enumerate(self.entries):
+            if entry.getType() == 'f':
                 ids.append(self.getObjectId(i))
         return ids
 
@@ -385,8 +379,8 @@ class PDFCrossRefSubSection:
 
     def getNewObjectIds(self):
         ids = []
-        for i in range(len(self.entries)):
-            if self.entries[i].getType() == 'n':
+        for i, entry in enumerate(self.entries):
+            if entry.getType() == 'n':
                 ids.append(self.getObjectId(i))
         return ids
 
@@ -857,8 +851,8 @@ class PDFBody:
         for indirectObject in self.objects.values():
             sortedIdsOffsets.append([indirectObject.getId(), indirectObject.getOffset()])
         sortedIdsOffsets = sorted(sortedIdsOffsets, key=lambda x: x[1])
-        for i in range(len(sortedIdsOffsets)):
-            sortedIds.append(sortedIdsOffsets[i][0])
+        for i, sortedIdOffset in enumerate(sortedIdsOffsets):
+            sortedIds.append(sortedIdOffset[0])
         return sortedIds
 
     def getObjectStreams(self):
@@ -2394,8 +2388,7 @@ class PDFFile:
         if version is None:
             infoObjects = []
             infoIds = self.getInfoObjectId()
-            for i in xrange(len(infoIds)):
-                id = infoIds[i]
+            for i, id in enumerate(infoIds):
                 if id is not None:
                     infoObject = self.getObject(id, i, indirect)
                     infoObjects.append(infoObject)
@@ -2833,8 +2826,8 @@ class PDFFile:
                                 if type == 'dictionary' and len(elements) == 1:
                                     type = elements.keys()[0]
                     references = self.getReferencesIn(id, version)
-                    for i in range(len(references)):
-                        referencesIds.append(int(references[i].split()[0]))
+                    for reference in references:
+                        referencesIds.append(int(reference.split()[0]))
                     if references is None:
                         objectsIn[id] = (type, [])
                     else:
@@ -3479,7 +3472,7 @@ class PDFParser:
         pdfFile.setUpdates(len(self.fileParts) - 1)
 
         # Getting the body, cross reference table and trailer of each part of the file
-        for i in range(len(self.fileParts)):
+        for i, content in enumerate(self.fileParts):
             bodyOffset = 0
             xrefOffset = 0
             trailerOffset = 0
@@ -3495,7 +3488,6 @@ class PDFParser:
                 encryptDictId = None
             if pdfFile.getFileId() == '':
                 fileId = None
-            content = self.fileParts[i]
             if i == 0:
                 bodyOffset = 0
             else:
@@ -3524,11 +3516,11 @@ class PDFParser:
             body = PDFBody()
             rawIndirectObjects = self.getIndirectObjects(bodyContent, looseMode)
             if rawIndirectObjects != []:
-                for j in range(len(rawIndirectObjects)):
+                for j, rawIndirectObject in enumerate(rawIndirectObjects):
                     relativeOffset = 0
                     auxContent = str(bodyContent)
-                    rawObject = rawIndirectObjects[j][0]
-                    objectHeader = rawIndirectObjects[j][1]
+                    rawObject = rawIndirectObject[0]
+                    objectHeader = rawIndirectObject[1]
                     while True:
                         index = auxContent.find(objectHeader)
                         if index == -1:
@@ -4306,7 +4298,7 @@ class PDFParser:
         oldCounter = self.charCounter
         self.charCounter = 0
         if objectType is not None:
-            objectsTypeArray = [self.delimiters[i][2] for i in range(len(self.delimiters))]
+            objectsTypeArray = [delimiter[2] for delimiter in self.delimiters)]
             index = objectsTypeArray.index(objectType)
             if index != -1:
                 delimiters = [self.delimiters[index]]
