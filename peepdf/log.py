@@ -23,7 +23,7 @@ class PDFObjectLogger():
     def __init__(self):
         self.logHandler = PdfParserHandler(self)
         self.logHandler.setLevel(logging.DEBUG)
-        self.log = logging.getLogger(__name__ + "." + self.__class__.__name__)
+        self.log = logging.getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self.log.addHandler(self.logHandler)
         self.errors = []
 
