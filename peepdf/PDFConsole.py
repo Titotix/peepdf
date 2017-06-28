@@ -39,10 +39,11 @@ from peepdf.PDFUtils import (
 )
 from peepdf.PDFCrypto import xor
 from peepdf.JSAnalysis import isJavascript, analyseJS, Global, unescape
-from peepdf.PDFCore import (
-    PDFFile, PDFHexString, PDFDictionary, PDFNum, PDFName, PDFStream,
-    PDFReference, PDFString, PDFArray, PDFBool, PDFNull, vulnsDict, PDFParser
+from peepdf.PDFObjects import (
+    PDFHexString, PDFDictionary, PDFNum, PDFName, PDFStream,
+    PDFReference, PDFString, PDFArray, PDFBool, PDFNull
 )
+from peepdf.PDFCore import PDFParser, PDFFile, vulnsDict
 
 from peepdf.PDFOutput import PDFOutput
 
@@ -2756,7 +2757,7 @@ class PDFConsole(PDFOutput, cmd.Cmd):
             message = '*** Error: Opening document failed!!'
             self.pdfFile = None
         self.log_output('open ' + argv, message)
-        print self.dependenciesWarning()
+        print self.getDependenciesWarning()
         if self.pdfFile is not None:
             self.do_info('')
 

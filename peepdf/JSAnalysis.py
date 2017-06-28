@@ -32,7 +32,7 @@ import sys
 import traceback
 import logging
 
-from peepdf.PDFUtils import unescapeHTMLEntities, escapeString
+from peepdf.PDFUtils import unescapeHTMLEntities, escapeString, stripHTMLComments
 from peepdf.constants import ERROR_FILE, JS_ERROR_FILE
 
 try:
@@ -46,7 +46,7 @@ try:
             return
 
     JS_MODULE = True
-except:
+except ImportError:
     JS_MODULE = False
 
     class Global(object):
@@ -56,10 +56,9 @@ log = logging.getLogger(__name__)
 errorsFile = ERROR_FILE
 newLine = os.linesep
 reJSscript = '<script[^>]*?contentType\s*?=\s*?[\'"]application/x-javascript[\'"][^>]*?>(.*?)</script>'
-preDefinedCode = 'var app = this;'
 
 
-def analyseJS(code, context=None, manualAnalysis=False):
+def analyseJS(code, context=None, manualAnalysis=False, stripComments=True):
     '''
         Hooks the eval function and search for obfuscated elements in the Javascript code
 
@@ -78,6 +77,8 @@ def analyseJS(code, context=None, manualAnalysis=False):
 
     try:
         code = unescapeHTMLEntities(code)
+        if stripComments:
+            code = stripHTMLComments(code)
         scriptElements = re.findall(reJSscript, code, re.DOTALL | re.IGNORECASE)
         if scriptElements:
             code = ''
@@ -92,7 +93,6 @@ def analyseJS(code, context=None, manualAnalysis=False):
             context.enter()
             # Hooking the eval function
             context.eval('eval=evalOverride')
-            # context.eval(preDefinedCode)
             while True:
                 try:
                     context.eval(code)

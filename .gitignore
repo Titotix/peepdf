@@ -4,3 +4,4 @@
 peepdf.egg-info/
 build/
 dist/
+peepdf-profiling

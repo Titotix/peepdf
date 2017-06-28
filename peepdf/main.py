@@ -48,7 +48,7 @@ VT_KEY = 'fc90df3f5ac749a94a94cb8bf87e05a681a2eb001aef34b6a0084b8c22c97a64'
 newLine = os.linesep
 
 versionHeader = 'Version: peepdf ' + PEEPDF_VERSION + ' r' + PEEPDF_REVISION
-PeepdfHeader = versionHeader + newLine * 2 + \
+peepdfHeader = versionHeader + newLine * 2 + \
                PEEPDF_URL + newLine + \
                TWITTER_URL + newLine + \
                AUTHOR_EMAIL + newLine * 2 + \
@@ -73,12 +73,14 @@ def main():
     argsParser.add_option('-C', '--command', action='append', type='string', dest='commands', help='Specifies a command from the interactive console to be executed.')
     (options, args) = argsParser.parse_args()
     
+    log = logging.getLogger()
+    # TODO shorter logger header (date ! no millisec and 2 first year number)
+    formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s : %(message)s')
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.DEBUG)
+    sh.setFormatter(formatter)
+
     try:
-        log = logging.getLogger()
-        formatter = logging.Formatter('[%(levelname)s] %(asctime)s - %(name)s : %(message)s')
-        sh = logging.StreamHandler()
-        sh.setLevel(logging.DEBUG)
-        sh.setFormatter(formatter)
         if options.verbose:
             log.setLevel(logging.DEBUG)
         else:
@@ -91,6 +93,7 @@ def main():
             sys.exit(argsParser.print_help())
         if options.version:
             print peepdfHeader
+            sys.exit()
 
         pdfName = None
         if len(args) > 1 or (len(args) == 0 and not options.isInteractive):
@@ -144,14 +147,14 @@ def main():
         if excName is None or excName != 'PeepException':
             errorMessage = '*** Error: Exception not handled!!'
             traceback.print_exc(file=open(ERROR_FILE, 'a'))
-        sys.stderr.write(errorMessage)
+        log.error("Unhandled error: {}".format(traceback.format_exc()))
     finally:
         if os.path.exists(ERROR_FILE):
             message = newLine + 'Please, don\'t forget to report errors if found:' + newLine * 2
             message += '\t- Sending the file "%s" to the author (mailto:%s)%s' % (
                 ERROR_FILE, AUTHOR_EMAIL, newLine)
             message += '\t- And/Or creating an issue on the project webpage (https://github.com/jesparza/peepdf/issues)' + newLine
-            sys.stderr.write(message)
+            log.warn(message)
 
 
 if __name__ == "__main__":

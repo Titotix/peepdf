@@ -3296,6 +3296,8 @@ class PDFFile(PDFObjectLogger):
 
 
 class PDFParser:
+
+
     def __init__(self):
         self.commentChar = '%'
         self.comments = []
